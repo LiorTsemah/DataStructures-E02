@@ -12,6 +12,15 @@ public class BinomialHeap
 	
 	private int numberOfTrees;
 
+	public BinomialHeap() { }
+
+	private BinomialHeap(HeapNode Last, int Size) 
+	{
+		last = Last;
+		size = Size;
+		FindMinAndCountTrees();
+	}
+
 	/**
 	 * 
 	 * pre: key > 0
@@ -22,28 +31,38 @@ public class BinomialHeap
 	public HeapItem insert(int key, String info) 
 	{    
 		numberOfTrees++;
+		size++;
 		HeapItem item = new HeapItem();
 		item.key = key; item.info = info;
 		HeapNode node = new HeapNode();
 		AssignNode(item, node);
 		if (numberOfTrees == 1) 
 		{
-			min = last = node;
+			min = last = node.next = node;
 			return item;
 		}
 		if (key < min.Key())
 			min = node;
 		HeapNode minTree = last.next;
-		HeapNode prev = last;
-		prev.next = node;
+		last.next = node;
 		node.next = minTree;
 		while (minTree != node && minTree.rank == node.rank)
 		{
 			HeapNode next = minTree.next;
-			node = Link(node, minTree);
-			prev.next = node;
-			node.next = next;
-			minTree = next;
+			if (next == node || next == minTree)
+			{
+				node = Link(node, minTree);
+				node.next = node;
+				last = node;
+				break;
+			}
+			else 
+			{
+				node = Link(node, minTree);
+				node.next = next;
+				last.next = node;
+				minTree = next;
+			}
 		}
 		return item;
 	}
@@ -55,15 +74,49 @@ public class BinomialHeap
 	 */
 	public void deleteMin()
 	{
-		size -= 1;
 		if (min.rank == 0)
 		{
 			last.next = min.next;
 			min.next = null;
 			numberOfTrees--;
 			if (numberOfTrees == 0)
+			{
 				last = null;
+				min = null;
+			}
 		}
+		HeapNode minChild = min.child;
+		minChild.parent = null;
+		minChild = minChild.next;
+		while (minChild != min.child)
+		{
+			minChild.parent = null;
+			minChild = minChild.next;
+		}
+		min.child = null;
+		HeapNode afterMin = min.next;
+		int treeSize = (int)Math.pow(2, min.rank);
+		if (afterMin == min)
+		{
+			min = null;
+			last = null;
+		}
+		else 
+		{
+			HeapNode temp = afterMin;
+			last = afterMin;
+			while (temp.next != min)
+			{
+				temp = temp.next;
+				if (last.rank < temp.rank)
+					last = temp;
+			}
+			temp.next = afterMin;
+		}
+		numberOfTrees--;
+		size -= treeSize;
+		BinomialHeap temp = new BinomialHeap(minChild, treeSize - 1);
+		meld(temp);
 	}
 
 	/**
@@ -86,8 +139,6 @@ public class BinomialHeap
 	public void decreaseKey(HeapItem item, int diff) 
 	{    
 		item.key -= diff;
-		if (item.key < min.item.key) 
-			min = item.node;
 		while (null != item.node.parent && item.key < item.node.parent.Key())
 		{
 			HeapNode childN = item.node, parentN = item.node.parent;
@@ -95,6 +146,8 @@ public class BinomialHeap
 			AssignNode(item, parentN);
 			AssignNode(parent, childN);
 		}
+		if (item.key < min.item.key) 
+			min = item.node;
 	}
 
 	/**
@@ -128,6 +181,7 @@ public class BinomialHeap
 			heap2.numberOfTrees = 0;
 			return;
 		}	
+		size += heap2.size;
 		HeapNode minA = last.next, minB = heap2.last.next, carry = null, prev = null, first = null, remainder = null;
 		while (true)
 		{
@@ -151,7 +205,7 @@ public class BinomialHeap
 						break;
 					}
 				}
-				if (minA.rank < minB.rank)
+				else if (minA.rank < minB.rank)
 				{
 					int prevRank = minA.rank;
 					if (prev == null)
@@ -208,18 +262,31 @@ public class BinomialHeap
 				if (minA.rank < minB.rank)
 				{ //necessarily, minA.rank == carry.rank
 					HeapNode nA = minA.next;
+					int prevRank = minA.rank;
 					carry = Link(minA, carry);
-					minA = nA;
+					minA = nA; 
+					if (minA.rank <= prevRank)
+					{
+						remainder = minB;
+						break;
+					}
 				}
 				else if (minB.rank < minA.rank)
 				{ //necessarily, minB.rank == carry.rank
 					HeapNode nB = minB.next;
+					int prevRank = minB.rank;
 					carry = Link(minB, carry);
-					minA = nB;
+					minB = nB;
+					if (minB.rank <= prevRank)
+					{
+						remainder = minA;
+						break;
+					}
 				}
 				else 
 				{ //the three nodes share a rank
 					HeapNode nA = minA.next, nB = minB.next; 
+					int prevRank = minA.rank;
 					if (null == first)
 					{
 						first = prev = carry;
@@ -231,6 +298,17 @@ public class BinomialHeap
 					}
 					carry = Link(minA, minB);
 					minA = nA; minB = nB;
+					if (minA.rank <= prevRank)
+					{
+						if (prevRank < minB.rank)
+							remainder = minB;
+						break;
+					}
+					if (minB.rank <= prevRank)
+					{
+						remainder = minA;
+						break;
+					}
 				}
 			}
 		}
@@ -244,8 +322,15 @@ public class BinomialHeap
 			{
 				if (carry.rank < remainder.rank)
 				{
-					prev.next = carry;
-					prev = carry;
+					if (null == prev)
+					{
+						prev = first = carry;
+					}
+					else 
+					{
+						prev.next = carry;
+						prev = carry;
+					}
 					carry = null;
 					break;
 				}
@@ -279,6 +364,7 @@ public class BinomialHeap
 		}
 		prev.next = first;
 		last = prev;
+		FindMinAndCountTrees();
 	}
 
 	/**
@@ -309,7 +395,7 @@ public class BinomialHeap
 	 */
 	public int numTrees()
 	{
-		return numberOfTrees; // should be replaced by student code
+		return numberOfTrees;
 	}
 
 	/**
@@ -358,13 +444,74 @@ public class BinomialHeap
 			B = A;
 			A = temp;
 		}
-		B.next = A.child.next;
-		A.child.next = B;
+		if (A.rank == 0)
+		{
+			B.next = B;
+		}
+		else 
+		{
+			B.next = A.child.next;
+			A.child.next = B;
+		}		
 		B.parent = A;
 		A.child = B;
 		A.rank++;
 		numberOfTrees--;
 		return A;
+	}
+
+	private void FindMinAndCountTrees()
+	{
+		HeapNode temp = last.next;
+		numberOfTrees = 1;
+		min = last;
+		while (temp != last)
+		{
+			numberOfTrees++;
+			if (temp.Key() < min.Key())
+				min = temp;
+			temp = temp.next;
+		}
+	}
+
+	public void Print() {
+		System.out.println("Binomial Heap:");
+		System.out.println("Size: " + size);
+
+		if (min != null) {
+			System.out.println("Minimum Node: " + min.item.key);
+		} else {
+			System.out.println("No minimum node.");
+		}
+
+		System.out.println("Heap Nodes:");
+		if (last != null) {
+			java.util.Set<HeapNode> visited = new java.util.HashSet<>();
+			PrintHeapNode(last.next, 0, visited);
+		} else {
+			System.out.println("No heap nodes.");
+		}
+	}
+
+	private void PrintHeapNode(HeapNode node, int indentLevel, java.util.Set<HeapNode> visited) {
+		StringBuilder indent = new StringBuilder();
+		for (int i = 0; i < indentLevel; i++) {
+			indent.append("    ");
+		}
+
+		System.out.println(indent + "K:" + node.Key() + " R: " + node.rank + " N: " + node.next.Key());
+
+		visited.add(node);
+
+		if (node.child != null && !visited.contains(node.child)) {
+			System.out.println(indent + "Child:");
+			PrintHeapNode(node.child.next, indentLevel + 1, visited);
+		}
+
+		if (node.next != null && !visited.contains(node.next)) {
+			System.out.println(indent + "Sibling:");
+			PrintHeapNode(node.next, indentLevel, visited);
+		}
 	}
 	//#endregion
 }
