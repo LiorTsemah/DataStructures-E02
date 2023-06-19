@@ -350,14 +350,21 @@ public class BinomialHeap
 		}
 		if (null == remainder)
 		{
-			prev.next = carry;
-			prev = carry;
+			if (null == prev)
+			{
+				first = prev = carry; 
+			}
+			else 
+			{
+				prev.next = carry;
+				prev = carry;
+			}
 			carry = null;
 		}
 		else //carry is null, remainder isn't 
 		{ 
 			prev.next = remainder;
-			while (prev.rank <= prev.next.rank)
+			while (prev.rank < prev.next.rank)
 			{
 				prev = prev.next;
 			}
