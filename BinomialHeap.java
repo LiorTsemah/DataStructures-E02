@@ -64,6 +64,7 @@ public class BinomialHeap
 				minTree = next;
 			}
 		}
+		Validate_HareTortoise();
 		return item;
 	}
 
@@ -79,11 +80,24 @@ public class BinomialHeap
 			last.next = min.next;
 			min.next = null;
 			numberOfTrees--;
+			size--;
 			if (numberOfTrees == 0)
 			{
 				last = null;
 				min = null;
 			}
+			else 
+			{
+				min = last;
+				HeapNode temp = last.next;
+				while (temp != last)
+				{
+					if (temp.Key() < min.Key())
+						min = temp;
+					temp = temp.next;
+				}
+			}
+			return;
 		}
 		HeapNode minChild = min.child;
 		minChild.parent = null;
@@ -111,7 +125,8 @@ public class BinomialHeap
 				if (last.rank < temp.rank)
 					last = temp;
 			}
-			temp.next = afterMin;
+			temp.next = afterMin; 
+			min.next = null;
 		}
 		numberOfTrees--;
 		size -= treeSize;
@@ -183,31 +198,30 @@ public class BinomialHeap
 		}	
 		size += heap2.size;
 		HeapNode minA = last.next, minB = heap2.last.next, carry = null, prev = null, first = null, remainder = null;
+		HeapNode youngestA = minA, youngestB = minB;
 		while (true)
 		{
 			if (null == carry)
 			{
 				if (minA.rank == minB.rank)
 				{
-					int prevRank = minA.rank;
-					HeapNode nA = minA.next, nB = minB.next; 
+					HeapNode nextA = minA.next, nextB = minB.next; 
 					carry = Link(minA, minB);
-					minA = nA; minB = nB;
-					if (minA.rank <= prevRank)
+					if (nextA == youngestA)
 					{
-						if (prevRank < minB.rank)
-							remainder = minB;
+						if (nextB != youngestB)
+							remainder = nextB;
 						break;
 					}
-					else if (minB.rank <= prevRank)
+					else if (nextB == youngestB)
 					{
-						remainder = minA;
+						remainder = nextA;
 						break;
 					}
+					minA = nextA; minB = nextB;
 				}
 				else if (minA.rank < minB.rank)
 				{
-					int prevRank = minA.rank;
 					if (prev == null)
 					{
 						minA = (first = prev = minA).next;
@@ -218,7 +232,7 @@ public class BinomialHeap
 						prev = minA;
 						minA = minA.next;
 					}
-					if (minA.rank <= prevRank)
+					if (minA == youngestA)
 					{
 						remainder = minB;
 						break;
@@ -226,7 +240,6 @@ public class BinomialHeap
 				}
 				else //minB.rank < minA.rank
 				{
-					int prevRank = minB.rank;
 					if (prev == null)
 					{
 						minB = (first = prev = minB).next;
@@ -237,7 +250,7 @@ public class BinomialHeap
 						prev = minB;
 						minB = minB.next;
 					}
-					if (minB.rank <= prevRank)
+					if (minB == youngestB)
 					{
 						remainder = minA;
 						break;
@@ -261,32 +274,29 @@ public class BinomialHeap
 			{
 				if (minA.rank < minB.rank)
 				{ //necessarily, minA.rank == carry.rank
-					HeapNode nA = minA.next;
-					int prevRank = minA.rank;
+					HeapNode nextA = minA.next;
 					carry = Link(minA, carry);
-					minA = nA; 
-					if (minA.rank <= prevRank)
+					if (minA == youngestA)
 					{
 						remainder = minB;
 						break;
 					}
+					minA = nextA; 
 				}
 				else if (minB.rank < minA.rank)
 				{ //necessarily, minB.rank == carry.rank
-					HeapNode nB = minB.next;
-					int prevRank = minB.rank;
+					HeapNode nextB = minB.next;
 					carry = Link(minB, carry);
-					minB = nB;
-					if (minB.rank <= prevRank)
+					if (minB == youngestB)
 					{
 						remainder = minA;
 						break;
 					}
+					minB = nextB;
 				}
 				else 
 				{ //the three nodes share a rank
-					HeapNode nA = minA.next, nB = minB.next; 
-					int prevRank = minA.rank;
+					HeapNode nextA = minA.next, nextB = minB.next; 
 					if (null == first)
 					{
 						first = prev = carry;
@@ -297,18 +307,18 @@ public class BinomialHeap
 						prev = carry;
 					}
 					carry = Link(minA, minB);
-					minA = nA; minB = nB;
-					if (minA.rank <= prevRank)
+					if (nextA == youngestA)
 					{
-						if (prevRank < minB.rank)
-							remainder = minB;
+						if (nextB != youngestB)
+							remainder = nextB;
 						break;
 					}
-					if (minB.rank <= prevRank)
+					else if (nextB == youngestB)
 					{
-						remainder = minA;
+						remainder = nextA;
 						break;
 					}
+					minA = nextA; minB = nextB;
 				}
 			}
 		}
@@ -336,11 +346,10 @@ public class BinomialHeap
 				}
 				else 
 				{
-					HeapNode nR = remainder.next;
-					int prevRank = remainder.rank;
+					HeapNode remainderNext = remainder.next;
 					carry = Link(remainder, carry);
-					remainder = nR;
-					if (remainder.rank <= prevRank)
+					remainder = remainderNext;
+					if (remainder == youngestA || remainder == youngestB)
 					{
 						remainder = null;
 						break;
@@ -371,7 +380,29 @@ public class BinomialHeap
 		}
 		prev.next = first;
 		last = prev;
+		Validate_HareTortoise();
 		FindMinAndCountTrees();
+	}
+
+	private void Validate_HareTortoise()
+	{
+		if (last == null)
+		{
+			if (size != 0)
+				System.out.println("ERROR");
+			return;
+		}
+		HeapNode hare = last, tort = last;
+		do
+		{
+			tort = tort.next;
+			hare = hare.next.next;
+		}
+		while (hare != tort);
+		if (hare != last)
+		{
+			System.out.println("ERROR");
+		}
 	}
 
 	/**
