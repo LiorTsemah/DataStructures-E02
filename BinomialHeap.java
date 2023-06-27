@@ -29,9 +29,9 @@ public class BinomialHeap
 	 *
 	 */
 	public HeapItem insert(int key, String info) 
-	{    
-		numberOfTrees++;
-		size++;
+	{   
+		numberOfTrees++; //Link decreases this as necessary
+		size++; //increase size by 1, to make sure it always matches the number of nodes in the tree; this is because insert adds only a single node.
 		HeapItem item = new HeapItem();
 		item.key = key; item.info = info;
 		HeapNode node = new HeapNode();
@@ -41,13 +41,13 @@ public class BinomialHeap
 			min = last = node.next = node;
 			return item;
 		}
-		if (key < min.Key())
+		if (key < min.item.key)
 			min = node;
 		HeapNode minTree = last.next;
 		last.next = node;
 		node.next = minTree;
 		while (minTree != node && minTree.rank == node.rank)
-		{
+		{//minTree and its sibling need Linking()
 			HeapNode next = minTree.next;
 			if (next == node || next == minTree)
 			{
@@ -64,7 +64,6 @@ public class BinomialHeap
 				minTree = next;
 			}
 		}
-		Validate_HareTortoise();
 		return item;
 	}
 
@@ -75,8 +74,10 @@ public class BinomialHeap
 	 */
 	public void deleteMin()
 	{
+		if (null == min)
+			return;
 		if (min.rank == 0)
-		{
+		{ //simple case where min is a B0
 			last.next = min.next;
 			min.next = null;
 			numberOfTrees--;
@@ -92,7 +93,7 @@ public class BinomialHeap
 				HeapNode temp = last.next;
 				while (temp != last)
 				{
-					if (temp.Key() < min.Key())
+					if (temp.item.key < min.item.key)
 						min = temp;
 					temp = temp.next;
 				}
@@ -141,7 +142,7 @@ public class BinomialHeap
 	 */
 	public HeapItem findMin()
 	{
-		return min.item;
+		return null == min ? null : min.item;
 	} 
 
 	/**
@@ -154,7 +155,7 @@ public class BinomialHeap
 	public void decreaseKey(HeapItem item, int diff) 
 	{    
 		item.key -= diff;
-		while (null != item.node.parent && item.key < item.node.parent.Key())
+		while (null != item.node.parent && item.key < item.node.parent.item.key)
 		{
 			HeapNode childN = item.node, parentN = item.node.parent;
 			HeapItem parent = parentN.item;
@@ -171,7 +172,8 @@ public class BinomialHeap
 	 *
 	 */
 	public void delete(HeapItem item) 
-	{    
+	{
+		//integer overflow trick is intended; this make key - diff equal min_value 
 		decreaseKey(item, Integer.MIN_VALUE + item.key);
 		deleteMin();
 	}
@@ -197,212 +199,158 @@ public class BinomialHeap
 			return;
 		}	
 		size += heap2.size;
-		HeapNode minA = last.next, minB = heap2.last.next, carry = null, prev = null, first = null, remainder = null;
-		HeapNode youngestA = minA, youngestB = minB;
-		while (true)
+		HeapNode minA = last.next, minB = heap2.last.next, carry = null, tail = null, head = null, remainder = null;
+		last.next = heap2.last.next = null;
+		while (true) 
 		{
 			if (null == carry)
 			{
-				if (minA.rank == minB.rank)
-				{
-					HeapNode nextA = minA.next, nextB = minB.next; 
-					carry = Link(minA, minB);
-					if (nextA == youngestA)
+				if (minA.rank < minB.rank)
+				{ //add minA to linked root list 
+					if (null == tail) 
+						tail = head = minA;
+					else 
 					{
-						if (nextB != youngestB)
-							remainder = nextB;
+						tail.next = minA;
+						tail = minA;
+					}
+					if (null == minA.next)
+					{
+						remainder = minB;
 						break;
 					}
-					else if (nextB == youngestB)
+					minA = minA.next;
+				}
+				else if (minB.rank < minA.rank)
+				{//add minA to linked root list 
+					if (null == tail) 
+						tail = head = minB;
+					else 
+					{
+						tail.next = minB;
+						tail = minB;
+					}
+					if (null == minB.next)
+					{
+						remainder = minA;
+						break;
+					}
+					minB = minB.next;
+				}
+				else 
+				{//minA and minB share a rank, link and carry them
+					HeapNode nextA = minA.next, nextB = minB.next;
+					carry = Link(minA, minB);
+					if (null == nextA)
+					{
+						remainder = nextB; //whether null or not
+						break;
+					}
+					else if (null == nextB)
 					{
 						remainder = nextA;
 						break;
 					}
 					minA = nextA; minB = nextB;
 				}
-				else if (minA.rank < minB.rank)
-				{
-					if (prev == null)
-					{
-						minA = (first = prev = minA).next;
-					}
+			}
+			else
+			{//carry exists
+				if (carry.rank < minA.rank && carry.rank < minB.rank)
+				{ //carry has minimal rank among nodes
+					if (null == tail) 
+						tail = head = carry;
 					else 
 					{
-						prev.next = minA;
-						prev = minA;
-						minA = minA.next;
+						tail.next = carry;
+						tail = carry;
 					}
-					if (minA == youngestA)
-					{
-						remainder = minB;
-						break;
-					}
+					carry = null;
+					continue;
 				}
-				else //minB.rank < minA.rank
-				{
-					if (prev == null)
-					{
-						minB = (first = prev = minB).next;
-					}
-					else 
-					{
-						prev.next = minB;
-						prev = minB;
-						minB = minB.next;
-					}
-					if (minB == youngestB)
-					{
-						remainder = minA;
-						break;
-					}
-				}
-			}
-			else if (carry.rank < minA.rank && carry.rank < minB.rank)
-			{
-				if (null == first)
-				{
-					first = prev = carry;
-				}
-				else 
-				{
-					prev.next = carry;
-					prev = carry;
-				}
-				carry = null;
-			}
-			else //carry isn't null but not the strict minimum
-			{
 				if (minA.rank < minB.rank)
-				{ //necessarily, minA.rank == carry.rank
-					HeapNode nextA = minA.next;
+				{ //necessarily minA.rank == carry.rank
+					HeapNode nextA = minA.next; 
 					carry = Link(minA, carry);
-					if (minA == youngestA)
+					if (null == nextA)
 					{
 						remainder = minB;
 						break;
 					}
-					minA = nextA; 
+					minA = nextA;
+					continue;
 				}
-				else if (minB.rank < minA.rank)
-				{ //necessarily, minB.rank == carry.rank
-					HeapNode nextB = minB.next;
+				if (minB.rank < minA.rank)
+				{ //necessarily minB.rank == carry.rank
+					HeapNode nextB = minB.next; 
 					carry = Link(minB, carry);
-					if (minB == youngestB)
+					if (null == nextB)
 					{
 						remainder = minA;
 						break;
 					}
 					minB = nextB;
+					continue;
 				}
+				//the three nodes share the same rank
+				//add carry to root list
+				if (null == tail) 
+					tail = head = carry;
 				else 
-				{ //the three nodes share a rank
-					HeapNode nextA = minA.next, nextB = minB.next; 
-					if (null == first)
-					{
-						first = prev = carry;
-					}
-					else 
-					{
-						prev.next = carry;
-						prev = carry;
-					}
-					carry = Link(minA, minB);
-					if (nextA == youngestA)
-					{
-						if (nextB != youngestB)
-							remainder = nextB;
-						break;
-					}
-					else if (nextB == youngestB)
-					{
-						remainder = nextA;
-						break;
-					}
-					minA = nextA; minB = nextB;
-				}
-			}
-		}
-		if (null == carry && null == remainder)
-		{
-			System.out.println("Both remainder and carry are null; bugs incoming");
-		}
-		if (null != remainder && null != carry)
-		{
-			while (true) 
-			{
-				if (carry.rank < remainder.rank)
 				{
-					if (null == prev)
-					{
-						prev = first = carry;
-					}
-					else 
-					{
-						prev.next = carry;
-						prev = carry;
-					}
-					carry = null;
+					tail.next = carry;
+					tail = carry;
+				}
+				HeapNode nextA = minA.next, nextB = minB.next;
+				//set carry equals link of A and B
+				carry = Link(minA, minB);
+				//exit if done with one or both lists
+				if (null == nextA)
+				{
+					remainder = nextB; //whether null or not
 					break;
 				}
-				else 
+				else if (null == nextB)
 				{
-					HeapNode remainderNext = remainder.next;
-					carry = Link(remainder, carry);
-					remainder = remainderNext;
-					if (remainder == youngestA || remainder == youngestB)
-					{
-						remainder = null;
-						break;
-					}
+					remainder = nextA;
+					break;
 				}
+				minA = nextA; minB = nextB;
 			}
 		}
-		if (null == remainder)
-		{
-			if (null == prev)
-			{
-				first = prev = carry; 
+		if (null != carry && null != remainder)
+		{ //behaves like insert
+			while (carry.rank == remainder.rank)
+			{ //link carry with remainder and advance remainder
+				HeapNode nextR = remainder.next;
+				carry = Link(carry, remainder);
+				if (null == nextR)
+				{ //carry is added below, since it is not null
+					remainder = null;
+					break;
+				}
+				remainder = nextR;
 			}
+		}
+		if (null != carry) 
+		{//add carry to root list
+			if (null == tail) 
+				tail = head = carry;
 			else 
 			{
-				prev.next = carry;
-				prev = carry;
-			}
-			carry = null;
-		}
-		else //carry is null, remainder isn't 
-		{ 
-			prev.next = remainder;
-			while (prev.rank < prev.next.rank)
-			{
-				prev = prev.next;
+				tail.next = carry;
+				tail = carry;
 			}
 		}
-		prev.next = first;
-		last = prev;
-		Validate_HareTortoise();
+		if (null != remainder)
+		{
+			tail.next = remainder;
+			while (null != tail.next)
+				tail = tail.next;
+		}
+		tail.next = head;
+		last = tail;
 		FindMinAndCountTrees();
-	}
-
-	private void Validate_HareTortoise()
-	{
-		if (last == null)
-		{
-			if (size != 0)
-				System.out.println("ERROR");
-			return;
-		}
-		HeapNode hare = last, tort = last;
-		do
-		{
-			tort = tort.next;
-			hare = hare.next.next;
-		}
-		while (hare != tort);
-		if (hare != last)
-		{
-			System.out.println("ERROR");
-		}
 	}
 
 	/**
@@ -446,15 +394,6 @@ public class BinomialHeap
 		public HeapNode next;
 		public HeapNode parent;
 		public int rank;
-
-		public int Key()
-		{
-			return item.key;
-		}
-		public String Info()
-		{
-			return item.info;
-		}
 	}
 
 	/**
@@ -476,8 +415,8 @@ public class BinomialHeap
 	private HeapNode Link(HeapNode A, HeapNode B)
 	{
 		assert A.rank == B.rank: "Incorrect ranks given to Link";
-		if (A.Key() > B.Key()) //swap so A is smaller
-		{
+		if (A.item.key > B.item.key || (A.item.key == B.item.key && B == min)) 
+		{ //swap so A is smaller, or is minimum to retain min being a root
 			HeapNode temp = B;
 			B = A;
 			A = temp;
@@ -506,50 +445,9 @@ public class BinomialHeap
 		while (temp != last)
 		{
 			numberOfTrees++;
-			if (temp.Key() < min.Key())
+			if (temp.item.key < min.item.key)
 				min = temp;
 			temp = temp.next;
 		}
 	}
-
-	public void Print() {
-		System.out.println("Binomial Heap:");
-		System.out.println("Size: " + size);
-
-		if (min != null) {
-			System.out.println("Minimum Node: " + min.item.key);
-		} else {
-			System.out.println("No minimum node.");
-		}
-
-		System.out.println("Heap Nodes:");
-		if (last != null) {
-			java.util.Set<HeapNode> visited = new java.util.HashSet<>();
-			PrintHeapNode(last.next, 0, visited);
-		} else {
-			System.out.println("No heap nodes.");
-		}
-	}
-
-	private void PrintHeapNode(HeapNode node, int indentLevel, java.util.Set<HeapNode> visited) {
-		StringBuilder indent = new StringBuilder();
-		for (int i = 0; i < indentLevel; i++) {
-			indent.append("    ");
-		}
-
-		System.out.println(indent + "K:" + node.Key() + " R: " + node.rank + " N: " + node.next.Key());
-
-		visited.add(node);
-
-		if (node.child != null && !visited.contains(node.child)) {
-			System.out.println(indent + "Child:");
-			PrintHeapNode(node.child.next, indentLevel + 1, visited);
-		}
-
-		if (node.next != null && !visited.contains(node.next)) {
-			System.out.println(indent + "Sibling:");
-			PrintHeapNode(node.next, indentLevel, visited);
-		}
-	}
-	//#endregion
 }
