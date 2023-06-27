@@ -100,6 +100,7 @@ public class BinomialHeap
 			}
 			return;
 		}
+		/*-*/ SumRanksOfDeletions += min.rank;
 		HeapNode minChild = min.child;
 		minChild.parent = null;
 		minChild = minChild.next;
@@ -412,9 +413,13 @@ public class BinomialHeap
 		Item.node = Node;
 		Node.item = Item;
 	}
+
+	//TEMPORARY
+	public int NumberOfLinks;
+	public int SumRanksOfDeletions;
 	private HeapNode Link(HeapNode A, HeapNode B)
 	{
-		assert A.rank == B.rank: "Incorrect ranks given to Link";
+		NumberOfLinks++;
 		if (A.item.key > B.item.key || (A.item.key == B.item.key && B == min)) 
 		{ //swap so A is smaller, or is minimum to retain min being a root
 			HeapNode temp = B;
